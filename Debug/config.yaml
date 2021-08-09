@@ -1,0 +1,9 @@
+node:
+- hostname: test1
+  port: 22
+  public_ip: 10.203.1.76
+  root_password: password
+- hostname: test2
+  port: 22
+  public_ip: 10.203.1.185
+  root_password: password
