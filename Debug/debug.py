@@ -1,12 +1,11 @@
 # -*- coding:utf-8 -*-
 
 import subprocess
-import os
 import time
 import paramiko
 import yaml
-
 import socket
+import argparse
 
 
 def exec_cmd(cmd, conn=None):
@@ -18,7 +17,6 @@ def exec_cmd(cmd, conn=None):
     if result:
         result = result.rstrip('\n')
     return result
-
 
 
 # LINBIT
@@ -36,7 +34,6 @@ def exec_cmd(cmd, conn=None):
 # cat /var/log/pacemaker.log  #查看pacemaker日志命令
 # crm_report --from	"$(date	-d "7 days ago" +"%Y-%m-%d	%H:%M:%S")"	/tmp/crm_report_${HOSTNAME}_$(date +"%Y-%m-%d")
 # 收集crm_report命令
-
 # tar -jxvf {path}crm.log.tar.bz2 -C {path} #解压
 
 
@@ -65,19 +62,31 @@ def get_path(logdir, node, soft):
     return path
 
 
-def show_tree(path, ssh_obj=None):
+def show_tree_all(path, ssh_obj=None):
     cmd = f"cd {path} && tree -L 4"
+    return exec_cmd(cmd, ssh_obj)
+
+
+def show_tree(path, node, soft=None, ssh_obj=None):
+    softpath = ""
+    for s in soft:
+        softpath += f" {node}/{s}"
+
+    if soft:
+        cmd = f"cd {path} && tree -a {softpath} -L 4"
+    else:
+        cmd = f"cd {path} && tree -a {node} -L 4"
     return exec_cmd(cmd, ssh_obj)
 
 
 def mkdir(path, ssh_obj=None):
     if not bool(exec_cmd(f'[ -d {path} ] && echo True', ssh_obj)):
-        exec_cmd(f"mkdir -p {path}",ssh_obj)
+        exec_cmd(f"mkdir -p {path}", ssh_obj)
 
 
 def scp_file(file_source, file_target, ssh_obj=None):
     cmd = f"scp -r {file_source} {file_target}"
-    exec_cmd(cmd,ssh_obj)
+    exec_cmd(cmd, ssh_obj)
 
 
 class SSHConn(object):
@@ -193,82 +202,102 @@ class Connect():
                 self.list_ssh.append(ssh)
 
 
-
-
-
-class Console():
-    def __init__(self, logfiledir):
-        self.logfiledir = logfiledir
+class Console:
+    def __init__(self):
         self.conn = Connect()
+        self.logfilepath = self.conn.cluster['logfilepath']
         self.file_target = self._get_file_target()
-
 
     def _get_file_target(self):
         local_ip = self.conn.get_host_ip()
         for node in self.conn.cluster['node']:
             if local_ip == node['public_ip']:
-                return f"root@{node['public_ip']}:{self.logfiledir}/"
+                return f"root@{node['public_ip']}:{self.logfilepath}/"
 
     def save_linbit_file(self):
         for ssh, node in zip(self.conn.list_ssh, self.conn.cluster['node']):
-            linbit_path = get_path(self.logfiledir, node['hostname'], 'LINBIT')
+            linbit_path = get_path(self.logfilepath, node['hostname'], 'LINBIT')
             mkdir(linbit_path, ssh)
             save_linbit_file(linbit_path, ssh)
             if ssh:
-                file_source = f"{self.logfiledir}/{node['hostname']}"
-                scp_file(file_source, self.file_target,ssh)
-
+                file_source = f"{self.logfilepath}/{node['hostname']}"
+                scp_file(file_source, self.file_target, ssh)
 
     def save_drbd_file(self):
         for ssh, node in zip(self.conn.list_ssh, self.conn.cluster['node']):
-            drbd_path = get_path(self.logfiledir, node['hostname'], 'DRBD')
+            drbd_path = get_path(self.logfilepath, node['hostname'], 'DRBD')
             mkdir(drbd_path, ssh)
             save_drbd_file(drbd_path, ssh)
             if ssh:
-                file_source = f"{self.logfiledir}/{node['hostname']}"
-                scp_file(file_source, self.file_target,ssh)
+                file_source = f"{self.logfilepath}/{node['hostname']}"
+                scp_file(file_source, self.file_target, ssh)
 
     def save_crm_file(self):
         for ssh, node in zip(self.conn.list_ssh, self.conn.cluster['node']):
-            crm_path = get_path(self.logfiledir, node['hostname'], 'CRM')
+            crm_path = get_path(self.logfilepath, node['hostname'], 'CRM')
             mkdir(crm_path, ssh)
             save_crm_file(crm_path, ssh)
             tar_crm_file(crm_path, ssh)
             if ssh:
-                file_source = f"{self.logfiledir}/{node['hostname']}"
-                scp_file(file_source, self.file_target,ssh)
+                file_source = f"{self.logfilepath}/{node['hostname']}"
+                scp_file(file_source, self.file_target, ssh)
 
-    def show_tree(self):
-        # for ssh, node in zip(self.conn.list_ssh, self.conn.cluster['node']):
-        #     # print(f"node: {node['hostname']}")
-        #     print(show_tree(self.logfiledir, ssh))
-
-        print(show_tree(self.logfiledir))
-
-
-    def test_scp(self):
-        for ssh, node in zip(self.conn.list_ssh, self.conn.cluster['node']):
-            if ssh:
-                file_source = f"{self.logfiledir}/{node['hostname']}"
-                print("file_source:",file_source)
-                print("file_target:",self.file_target)
-                scp_file(file_source, self.file_target,ssh)
-
-
-
-
-
+    # def show_tree(self):
+    #     for ssh, node in zip(self.conn.list_ssh, self.conn.cluster['node']):
+    #         # print(f"node: {node['hostname']}")
+    #         print(show_tree(self.logfiledir, ssh))
 
 
 if __name__ == "__main__":
-    path = "/home/logfile"
-    worker = Console(path)
-    worker.save_linbit_file()
-    worker.save_drbd_file()
-    worker.save_crm_file()
-    worker.show_tree()
-    # worker.test_scp()
+    worker = Console()
+    path = worker.logfilepath
 
+
+    def run(args):
+        if not args.soft:
+            print("处理linbit的log")
+            worker.save_linbit_file()
+            print("处理drbd的log")
+            worker.save_drbd_file()
+            print("处理crm的log")
+            worker.save_crm_file()
+            print("处理结束")
+        for soft in args.soft:
+            if soft == 'LINBIT':
+                print("处理linbit的log")
+                worker.save_linbit_file()
+            elif soft == 'DRBD':
+                print("处理drbd的log")
+                worker.save_drbd_file()
+            elif soft == 'CRM':
+                print("处理crm的log")
+                worker.save_crm_file()
+
+
+    def show(args):
+        if args.node:
+            print(show_tree(path, args.node, args.soft))
+        elif args.node is None and args.soft is None:
+            print(show_tree_all(path))
+        else:
+            print("请指定节点")
+
+
+    parser = argparse.ArgumentParser(description='test')
+    sub_parser = parser.add_subparsers()
+    parser_show = sub_parser.add_parser("show")
+
+    parser_show.add_argument('--node', '-n')
+    parser_show.add_argument('--soft', '-s', nargs='*', choices=['LINBIT', 'DRBD', 'CRM'])
+
+    parser.add_argument('--soft', '-s', nargs='*', choices=['LINBIT', 'DRBD', 'CRM'])
+
+    parser_show.set_defaults(func=show)
+    parser.set_defaults(func=run)
+
+    # 启动
+    args = parser.parse_args()
+    args.func(args)
 
     # 取出数据
     # for ssh in list_ssh_data:
@@ -284,4 +313,4 @@ if __name__ == "__main__":
     #     ssh_obj.exec_cmd(f"mkdir -p {path}")
     #     node_name = ssh_obj.exec_cmd("hostname").decode().rstrip("\n")
     #     print(f'{node_name} tree:')
-    #     print(ssh_obj.exec_cmd(f"cd {path} && tree ").decode())
+    #     print(ssh_obj.exec_cmd(f"cd {path}

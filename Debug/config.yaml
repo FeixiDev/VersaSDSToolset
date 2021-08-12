@@ -7,3 +7,5 @@ node:
   port: 22
   public_ip: 10.203.1.185
   root_password: password
+
+logfilepath: /home/logfile
