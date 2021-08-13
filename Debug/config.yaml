@@ -1,3 +1,4 @@
+logfilepath: /home/logfile
 node:
 - hostname: test1
   port: 22
@@ -8,4 +9,4 @@ node:
   public_ip: 10.203.1.185
   root_password: password
 
-logfilepath: /home/logfile
+

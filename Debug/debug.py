@@ -68,11 +68,10 @@ def show_tree_all(path, ssh_obj=None):
 
 
 def show_tree(path, node, soft=None, ssh_obj=None):
-    softpath = ""
-    for s in soft:
-        softpath += f" {node}/{s}"
-
     if soft:
+        softpath = ""
+        for s in soft:
+            softpath += f" {node}/{s}"
         cmd = f"cd {path} && tree -a {softpath} -L 4"
     else:
         cmd = f"cd {path} && tree -a {node} -L 4"
@@ -253,25 +252,36 @@ if __name__ == "__main__":
     path = worker.logfilepath
 
 
-    def run(args):
+    def collect_(args):
+        print("处理LINBIT的log")
+        worker.save_linbit_file()
+        print("处理DRBD的log")
+        worker.save_drbd_file()
+        print("处理CRM的log")
+        worker.save_crm_file()
+        print("处理结束")
+
+
+    def collect(args):
         if not args.soft:
-            print("处理linbit的log")
+            print("处理LINBIT的log")
             worker.save_linbit_file()
-            print("处理drbd的log")
+            print("处理DRBD的log")
             worker.save_drbd_file()
-            print("处理crm的log")
+            print("处理CRM的log")
             worker.save_crm_file()
             print("处理结束")
-        for soft in args.soft:
-            if soft == 'LINBIT':
-                print("处理linbit的log")
-                worker.save_linbit_file()
-            elif soft == 'DRBD':
-                print("处理drbd的log")
-                worker.save_drbd_file()
-            elif soft == 'CRM':
-                print("处理crm的log")
-                worker.save_crm_file()
+        else:
+            for soft in args.soft:
+                if soft == 'LINBIT':
+                    print("处理LINBIT的log")
+                    worker.save_linbit_file()
+                elif soft == 'DRBD':
+                    print("处理DRBD的log")
+                    worker.save_drbd_file()
+                elif soft == 'CRM':
+                    print("处理CRM的log")
+                    worker.save_crm_file()
 
 
     def show(args):
@@ -283,17 +293,19 @@ if __name__ == "__main__":
             print("请指定节点")
 
 
-    parser = argparse.ArgumentParser(description='test')
+    parser = argparse.ArgumentParser(description='collect debug message')
     sub_parser = parser.add_subparsers()
-    parser_show = sub_parser.add_parser("show")
+    parser_show = sub_parser.add_parser("show", aliases=["s"])
+    parser_collect = sub_parser.add_parser("collect", aliases=["c"])
 
     parser_show.add_argument('--node', '-n')
     parser_show.add_argument('--soft', '-s', nargs='*', choices=['LINBIT', 'DRBD', 'CRM'])
-
-    parser.add_argument('--soft', '-s', nargs='*', choices=['LINBIT', 'DRBD', 'CRM'])
+    parser_collect.add_argument('--soft', '-s', nargs='*', choices=['LINBIT', 'DRBD', 'CRM'])
 
     parser_show.set_defaults(func=show)
-    parser.set_defaults(func=run)
+    parser_collect.set_defaults(func=collect)
+    parser.set_defaults(func=collect_)
+
 
     # 启动
     args = parser.parse_args()
