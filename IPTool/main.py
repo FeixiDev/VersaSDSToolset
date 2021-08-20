@@ -48,7 +48,7 @@ class IPTool():
                                    '--mode',
                                    dest='mode',
                                    action='store',
-                                   choices=["balance-rr", "active-backup", "broadcast", "802.3ad", "balance-tlb",
+                                   choices=["balance-rr", "active-backup", "balance-xor", "broadcast", "802.3ad", "balance-tlb",
                                             "balance-alb"],
                                    required=True,
                                    help='Bonding mode')
@@ -135,3 +135,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

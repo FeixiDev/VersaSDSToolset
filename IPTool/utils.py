@@ -25,7 +25,7 @@ def exec_cmd(cmd, conn=None):
 
 
 def check_mode(mode):
-    mode_list = ["balance-rr", "active-backup", "broadcast", "802.3ad", "balance-tlb", "balance-alb"]
+    mode_list = ["balance-rr", "active-backup", "balance-xor","broadcast", "802.3ad", "balance-tlb", "balance-alb"]
     if mode in mode_list:
         return True
     else:

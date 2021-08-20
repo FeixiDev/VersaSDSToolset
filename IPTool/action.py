@@ -18,6 +18,13 @@ class IpService(object):
                 return True
         return False
 
+
+    def get_mode(self,bonding_name):
+        cmd = f"cat /proc/net/bonding/{bonding_name} | grep Bonding"
+        result = utils.exec_cmd(cmd,self.conn)
+        return result["rt"]
+
+
     def up_ip_service(self, connection_name):
         cmd = f"nmcli connection up id {connection_name}"
         result = utils.exec_cmd(cmd, self.conn)
@@ -32,6 +39,7 @@ class IpService(object):
     def modify_ip(self, device, new_ip, gateway, netmask=24):
         connection_name = f'vtel_{device}'
         cmd = f"nmcli connection modify {connection_name} ipv4.address {new_ip}/{netmask} ipv4.dns 114.114.114.114 ipv4.gateway {gateway} ipv4.method manual"
+        print(cmd)
         result = utils.exec_cmd(cmd, self.conn)
         if result:
             if result["st"]:
@@ -55,6 +63,11 @@ class IpService(object):
         if result:
             if result["st"]:
                 return bond_slave
+
+    def delete_bond_slave(self, master, device):
+        bond_slave = f'vtel_{master}-slave-{device}'
+        cmd = f"nmcli connect delete {bond_slave}"
+        utils.exec_cmd(cmd, self.conn)
 
     def modify_bonding_mode(self, device, mode):
         """
@@ -99,3 +112,34 @@ class IpService(object):
             if result["st"]:
                 # Bonding Mode: xxx
                 print(result["rt"])
+                return result["rt"]
+
+    # for bonding modify
+    def get_hostname(self):
+        cmd = "hostname"
+        result = utils.exec_cmd(cmd, self.conn)
+        if result:
+            if result["st"]:
+                return result["rt"]
+
+    def modify_hostname(self, hostname):
+        cmd = f'hostnamectl set-hostname {hostname}'
+        utils.exec_cmd(cmd, self.conn)
+
+    def get_device_status(self):
+        cmd = "nmcli device status"
+        result = utils.exec_cmd(cmd, self.conn)
+        if result:
+            if result["st"]:
+                return result["rt"]
+
+    def get_bond_ip(self, bonding_name):
+        cmd = f"nmcli device show {bonding_name} | grep IP4.ADDRESS"
+        result = utils.exec_cmd(cmd, self.conn)
+        if result:
+            if result["st"]:
+                return result["rt"]
+
+    def modify_hosts_file(self,old_hostname,new_hostname):
+        cmd = f"sed -i 's/{old_hostname}$/{new_hostname}/g' /etc/hosts"
+        utils.exec_cmd(cmd, self.conn)
