@@ -6,6 +6,7 @@ import yaml
 import socket
 import argparse
 
+
 def exec_cmd(cmd, conn=None):
     if conn:
         result = conn.exec_cmd(cmd)
