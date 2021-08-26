@@ -77,7 +77,7 @@ class IPTool():
         parser_modify.add_argument('-m',
                                    '--mode',
                                    dest='mode',
-                                   choices=["balance-rr", "active-backup", "balance-xor","broadcast", "802.3ad", "balance-tlb",
+                                   choices=["balance-rr", "active-backup", "balance-xor", "broadcast", "802.3ad", "balance-tlb",
                                             "balance-alb"],
                                    required=True,
                                    help='Bonding mode')
@@ -133,4 +133,5 @@ def main():
         sys.stderr.write("\nPermission denied (log file or other)\n")
 
 
-if __name__ == '__main_
+if __name__ == '__main__':
+    main()
