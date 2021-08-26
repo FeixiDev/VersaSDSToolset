@@ -1,12 +1,10 @@
 # -*- coding:utf-8 -*-
-
 import subprocess
 import time
 import paramiko
 import yaml
 import socket
 import argparse
-
 
 def exec_cmd(cmd, conn=None):
     if conn:
@@ -32,13 +30,13 @@ def exec_cmd(cmd, conn=None):
 
 # CRM
 # cat /var/log/pacemaker.log  #查看pacemaker日志命令
-# crm_report --from	"$(date	-d "7 days ago" +"%Y-%m-%d	%H:%M:%S")"	/tmp/crm_report_${HOSTNAME}_$(date +"%Y-%m-%d")
+#  crm_report --from "$(date -d "7 days ago" +"%Y-%m-%d %H:%M:%S")" --single-node /home/test2/$(date +"%Y-%m-%d")
 # 收集crm_report命令
 # tar -jxvf {path}crm.log.tar.bz2 -C {path} #解压
 
 
 def save_linbit_file(path, ssh_obj=None):
-    cmd = f'journalctl -u linstor-controller | cat > {path}/linstor-controller.log'
+    cmd = f'journalctl -u linstor-controller | cat > {path}/linstor-controller.log && journalctl -u linstor-satellite | cat > {path}/linstor-satellite.log'
     exec_cmd(cmd, ssh_obj)
 
 
@@ -48,7 +46,7 @@ def save_drbd_file(path, ssh_obj=None):
 
 
 def save_crm_file(path, ssh_obj=None):
-    cmd = f'crm_report --from "$(date -d "7 days ago" +"%Y-%m-%d %H:%M:%S")" {path}/crm.log'
+    cmd = f'crm_report --from "$(date -d "7 days ago" +"%Y-%m-%d %H:%M:%S")" --single-node {path}/crm.log'
     exec_cmd(cmd, ssh_obj)
 
 
@@ -324,5 +322,4 @@ if __name__ == "__main__":
     #     # print(ssh_obj.exec_cmd('pwd'))
     #     ssh_obj.exec_cmd(f"mkdir -p {path}")
     #     node_name = ssh_obj.exec_cmd("hostname").decode().rstrip("\n")
-    #     print(f'{node_name} tree:')
-    #     print(ssh_obj.exec_cmd(f"cd {path}
+    #

@@ -8,5 +8,7 @@ node:
   port: 22
   public_ip: 10.203.1.185
   root_password: password
-
-
+- hostname: test3
+  port: 22
+  public_ip: 10.203.1.130
+  root_password: password
