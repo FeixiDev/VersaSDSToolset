@@ -84,7 +84,7 @@ def mkdir(path, ssh_obj=None):
 
 
 def scp_file(file_source, file_target, ssh_obj=None):
-    cmd = f"scp -r {file_source} {file_target}"
+    cmd = f"scp -r {file_source} {file_target}" #scp传输格式：scp [可选参数] file_source file_target
     exec_cmd(cmd, ssh_obj)
 
 
@@ -117,7 +117,7 @@ class SSHConn(object):
     def ssh_connect(self):
         self._connect()
         if not self.SSHConnection:
-            print('Connect retry for SAN switch "%s" ...' % self._host)
+            print(f'Connect retry for  ...  {self._host}')
             self._connect()
 
     def exec_cmd(self, command):
@@ -145,9 +145,17 @@ class ConfFile():
         try:
             with open(self.yaml_file, 'r', encoding='utf-8') as f:
                 yaml_dict = yaml.safe_load(f)
-            return yaml_dict
+            if 'logfilepath' not in yaml_dict : #此处判断是否有logfilepath这个key，若没有则创建
+                yaml_dict['logfilepath'] = '/var/log/debugfiles'
+                return yaml_dict
+            else:
+                if yaml_dict['logfilepath'] :   #此处进行判断logfilepath的value是否为空，若为空则添加默认路径
+                    return yaml_dict
+                else:
+                    yaml_dict['logfilepath'] = "/var/log/debugfiles"
+                    return yaml_dict
         except FileNotFoundError:
-            print("Please check the file name:", self.yaml_file)
+            print(f"Please check the file name: {self.yaml_file}")
         except TypeError:
             print("Error in the type of file name.")
 
@@ -207,18 +215,18 @@ class Console:
         self.logfilepath = self.conn.cluster['logfilepath']
         self.file_target = self._get_file_target()
 
-    def _get_file_target(self):
+    def _get_file_target(self): #此处返回的file_target应为本机的ip地址
         local_ip = self.conn.get_host_ip()
-        for node in self.conn.cluster['node']:
-            if local_ip == node['public_ip']:
-                return f"root@{node['public_ip']}:{self.logfilepath}/"
+        # for node in self.conn.cluster['node']:
+        #     if local_ip == node['public_ip']:
+        return f"root@{local_ip}:{self.logfilepath}/"
 
     def save_linbit_file(self):
         for ssh, node in zip(self.conn.list_ssh, self.conn.cluster['node']):
             linbit_path = get_path(self.logfilepath, node['hostname'], 'LINBIT')
             mkdir(linbit_path, ssh)
-            save_linbit_file(linbit_path, ssh)
-            if ssh:
+            save_linbit_file(linbit_path, ssh)  #至此，遍历需要搜集日志的节点信息，完成在日志搜集节点创建日志存放目录并将日志存放在目录中
+            if ssh: #意义不明，ssh什么情况下才会出现非空的情况
                 file_source = f"{self.logfilepath}/{node['hostname']}"
                 scp_file(file_source, self.file_target, ssh)
 
@@ -246,13 +254,19 @@ class Console:
     #         # print(f"node: {node['hostname']}")
     #         print(show_tree(self.logfiledir, ssh))
 
+def collect_(args):
+    # print("处理LINBIT的log")
+    # worker.save_linbit_file()
+    # print("处理DRBD的log")
+    # worker.save_drbd_file()
+    # print("处理CRM的log")
+    # worker.save_crm_file()
+    # print("处理结束")
+    print("请输入python3 debug.py -h以获取帮助信息")
 
-if __name__ == "__main__":
-    worker = Console()
-    path = worker.logfilepath
 
-
-    def collect_(args):
+def collect(args):
+    if not args.soft:
         print("处理LINBIT的log")
         worker.save_linbit_file()
         print("处理DRBD的log")
@@ -260,45 +274,38 @@ if __name__ == "__main__":
         print("处理CRM的log")
         worker.save_crm_file()
         print("处理结束")
+    else:
+        for soft in args.soft:
+            if soft == 'LINBIT':
+                print("处理LINBIT的log")
+                worker.save_linbit_file()
+            elif soft == 'DRBD':
+                print("处理DRBD的log")
+                worker.save_drbd_file()
+            elif soft == 'CRM':
+                print("处理CRM的log")
+                worker.save_crm_file()
 
 
-    def collect(args):
-        if not args.soft:
-            print("处理LINBIT的log")
-            worker.save_linbit_file()
-            print("处理DRBD的log")
-            worker.save_drbd_file()
-            print("处理CRM的log")
-            worker.save_crm_file()
-            print("处理结束")
-        else:
-            for soft in args.soft:
-                if soft == 'LINBIT':
-                    print("处理LINBIT的log")
-                    worker.save_linbit_file()
-                elif soft == 'DRBD':
-                    print("处理DRBD的log")
-                    worker.save_drbd_file()
-                elif soft == 'CRM':
-                    print("处理CRM的log")
-                    worker.save_crm_file()
+def show(args):
+    if args.node:
+        print(show_tree(path, args.node, args.soft))
+    elif args.node is None and args.soft is None:
+        print(show_tree_all(path))
+    else:
+        print("请指定节点")
 
+    if args.path:
+        print(show_tree_all(args.path))
 
-    def show(args):
-        if args.node:
-            print(show_tree(path, args.node, args.soft))
-        elif args.node is None and args.soft is None:
-            print(show_tree_all(path))
-        else:
-            print("请指定节点")
-
-
+def arg():
     parser = argparse.ArgumentParser(description='collect debug message')
     sub_parser = parser.add_subparsers()
     parser_show = sub_parser.add_parser("show", aliases=["s"])
     parser_collect = sub_parser.add_parser("collect", aliases=["c"])
 
     parser_show.add_argument('--node', '-n')
+    parser_show.add_argument('--path', '-p')
     parser_show.add_argument('--soft', '-s', nargs='*', choices=['LINBIT', 'DRBD', 'CRM'])
     parser_collect.add_argument('--soft', '-s', nargs='*', choices=['LINBIT', 'DRBD', 'CRM'])
 
@@ -306,10 +313,18 @@ if __name__ == "__main__":
     parser_collect.set_defaults(func=collect)
     parser.set_defaults(func=collect_)
 
-
-    # 启动
     args = parser.parse_args()
     args.func(args)
+
+    return args
+
+
+if __name__ == "__main__":
+    worker = Console()
+    path = worker.logfilepath
+
+    # 启动
+    args = arg()
 
     # 取出数据
     # for ssh in list_ssh_data:
