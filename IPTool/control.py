@@ -53,8 +53,8 @@ def get_ip(result):
 def get_ssh_conn(node, password):
     if utils.get_host_ip() == node or node is None:
         return None
-    ssh_conn = utils.SSHConn(host=node, username="root", password=password)
-    return ssh_conn
+    # ssh_conn = utils.SSHConn(host=node, username="root", password=password)
+    return None
 
 
 class Bonding(object):
