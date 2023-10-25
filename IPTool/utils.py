@@ -6,6 +6,7 @@ import yaml
 import sys
 import re
 import socket
+import logging
 
 
 def get_host_ip():
@@ -26,17 +27,24 @@ def get_host_ip():
 def exec_cmd(cmd, conn=None):
     if conn:
         result = conn.exec_cmd(cmd)
+        log_data = f'{conn._host} - {cmd} - {result}'
+        Log().logger.info(log_data)
         return result
     else:
         p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, encoding="utf-8")
         if p.returncode == 0:
             result = p.stdout
             result = result.decode() if isinstance(result, bytes) else result
+            log_data = f'localhost - {cmd} - {result}'
+            Log().logger.info(log_data)
             return {"st": True, "rt": result}
         else:
             result = p.stderr
             result = result.decode() if isinstance(result, bytes) else result
+            log_data = f'localhost - {cmd} - {result}'
+            Log().logger.info(log_data)
             return {"st": False, "rt": result}
+
 
 
 def check_mode(mode):
@@ -60,60 +68,60 @@ def check_ip(ip):
         return False
 
 
-class SSHConn(object):
+# class SSHConn(object):  # 注释
 
-    def __init__(self, host, port=22, username=None, password=None, timeout=8):
-        self._host = host
-        self._port = port
-        self._timeout = timeout
-        self._username = username
-        self._password = password
-        self.SSHConnection = None
-        self.ssh_connect()
+#     def __init__(self, host, port=22, username=None, password=None, timeout=8):
+#         self._host = host
+#         self._port = port
+#         self._timeout = timeout
+#         self._username = username
+#         self._password = password
+#         self.SSHConnection = None
+#         self.ssh_connect()
 
-    def _connect(self):
-        try:
-            objSSHClient = paramiko.SSHClient()
-            objSSHClient.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            objSSHClient.connect(self._host, port=self._port,
-                                 username=self._username,
-                                 password=self._password,
-                                 timeout=self._timeout)
-            # time.sleep(1)
-            # objSSHClient.exec_command("\x003")
-            self.SSHConnection = objSSHClient
-        except:
-            print(f" Failed to connect {self._host}")
+#     def _connect(self):
+#         try:
+#             objSSHClient = paramiko.SSHClient()
+#             objSSHClient.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+#             objSSHClient.connect(self._host, port=self._port,
+#                                  username=self._username,
+#                                  password=self._password,
+#                                  timeout=self._timeout)
+#             # time.sleep(1)
+#             # objSSHClient.exec_command("\x003")
+#             self.SSHConnection = objSSHClient
+#         except:
+#             print(f" Failed to connect {self._host}")
 
-    def ssh_connect(self):
-        self._connect()
-        if not self.SSHConnection:
-            print(f'Connect retry for {self._host} ...')
-            self._connect()
-            if not self.SSHConnection:
-                sys.exit()
+#     def ssh_connect(self):
+#         self._connect()
+#         if not self.SSHConnection:
+#             print(f'Connect retry for {self._host} ...')
+#             self._connect()
+#             if not self.SSHConnection:
+#                 sys.exit()
 
-    def exec_cmd(self, command):
-        if self.SSHConnection:
-            stdin, stdout, stderr = self.SSHConnection.exec_command(command)
-            err = stderr.read()
-            if len(err) > 0:
-                err = err.decode() if isinstance(err, bytes) else err
-                return {"st": False, "rt": err}
-            data = stdout.read()
-            if len(data) > 0:
-                data = data.decode() if isinstance(data, bytes) else data
-                return {"st": True, "rt": data}
+#     def exec_cmd(self, command):
+#         if self.SSHConnection:
+#             stdin, stdout, stderr = self.SSHConnection.exec_command(command)
+#             err = stderr.read()
+#             if len(err) > 0:
+#                 err = err.decode() if isinstance(err, bytes) else err
+#                 return {"st": False, "rt": err}
+#             data = stdout.read()
+#             if len(data) > 0:
+#                 data = data.decode() if isinstance(data, bytes) else data
+#                 return {"st": True, "rt": data}
 
 
-# def get_hostname():
-#     """
-#     查询本机hostname
-#     :return:
-#     """
-#     # local_hostname = os.popen('hostname').read()
-#     local_hostname = os.popen('hostname').read().strip('\n')
-#     return local_hostname
+def get_hostname():
+    """
+    查询本机hostname
+    :return:
+    """
+    # local_hostname = os.popen('hostname').read()
+    local_hostname = os.popen('hostname').read().strip('\n')
+    return local_hostname
 
 
 class ConfFile(object):
@@ -151,3 +159,23 @@ class ConfFile(object):
                 print(f"Please check the ip config of {host_config['node']}. Number of bond devices must be 2")
                 sys.exit()
         return self.config["bond"]
+
+class Log(object):
+    def __init__(self):
+        pass
+
+    def __new__(cls, *args, **kwargs):
+        if not hasattr(cls, '_instance'):
+            Log._instance = super().__new__(cls)
+            Log._instance.logger = logging.getLogger()
+            Log._instance.logger.setLevel(logging.INFO)
+            Log.set_handler(Log._instance.logger)
+        return Log._instance
+
+    @staticmethod
+    def set_handler(logger):
+        fh = logging.FileHandler('./IPToolLog.log', mode='a')
+        fh.setLevel(logging.DEBUG)  # 输出到file的log等级的开关
+        formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+        fh.setFormatter(formatter)
+        logger.addHandler(fh)
