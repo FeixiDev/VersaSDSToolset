@@ -202,6 +202,8 @@ def modify_ssh_config(nodes):
             for i, line in enumerate(lines):
                 if line.strip().startswith(b'#   StrictHostKeyChecking ask'):
                     lines[i] = b'StrictHostKeyChecking no\n'
+                    log_data = f"{username} 节点 StrictHostKeyChecking no 替换完成"
+                    utils.Log().logger.info(log_data)
                     buffer = True
                     break
 

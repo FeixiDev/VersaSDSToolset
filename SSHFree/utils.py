@@ -50,10 +50,13 @@ class SSHConn(object):
             self.SSHConnection = objSSHClient
         except paramiko.AuthenticationException as auth_exception:
             print(f"Authentication failed for {self._host}: {auth_exception}")
+            Log().logger.error(f"Authentication failed for {self._host}: {auth_exception}")
         except paramiko.SSHException as ssh_exception:
             print(f"SSH connection failed for {self._host}: {ssh_exception}")
+            Log().logger.error(f"SSH connection failed for {self._host}: {ssh_exception}")
         except Exception as e:
             print(f"Failed to connect {self._host}: {e}")
+            Log().logger.error(f"Failed to connect {self._host}: {e}")
 
     def ssh_connect(self):
         self._connect()

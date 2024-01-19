@@ -61,7 +61,7 @@ class ArgparseOperator:
         modify_ssh_config_()
         
 def free_login():
-    config_info = operation.read_config('config.yaml')
+    config_info = operation.read_config('vsdssshfree_config.yaml')
     node_list = config_info['node']
     # TODO: 可以使用 concurrent.futures 模块来并行执行循环中的任务，以提高效率
     for z in node_list:
@@ -103,7 +103,7 @@ def free_login():
 
 
 def re_free_login():
-    config_info = operation.read_config('config.yaml')
+    config_info = operation.read_config('vsdssshfree_config.yaml')
     node_list = config_info['node']
     for z in node_list:
         name = z['name']
@@ -121,7 +121,7 @@ def re_free_login():
             print("Failed to remove password-free operation")
 
 def check_node_():
-    config_info = operation.read_config('config.yaml')
+    config_info = operation.read_config('vsdssshfree_config.yaml')
     node_list = config_info['node']
     result = operation.check_node(node_list)
     if result:
@@ -130,7 +130,7 @@ def check_node_():
         print("Node to node password free failure")
 
 def modify_ssh_config_():
-    config_info = operation.read_config('config.yaml')
+    config_info = operation.read_config('vsdssshfree_config.yaml')
     node_list = config_info['node']
     result = operation.modify_ssh_config(node_list)
     if result:
