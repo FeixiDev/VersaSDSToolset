@@ -24,7 +24,7 @@ class SSHConn(object):
         self._port = port
         self._timeout = timeout
         self._username = username
-        self._password = password
+        self._password = str(password)
         self.SSHConnection = None
         self.ssh_connect()
         
@@ -99,7 +99,8 @@ class SSHConn(object):
             cmd = f'ssh-copy-id -o stricthostkeychecking=no -i /root/.ssh/id_rsa.pub root@{target_ip}'
             conn = self.SSHConnection.invoke_shell()
             conn.keep_this = self.SSHConnection
-            print(cmd)
+            # print(cmd)
+            Log().logger.info(cmd)
             time.sleep(2)
             conn.send(cmd + '\n')
             time.sleep(2)
@@ -108,7 +109,9 @@ class SSHConn(object):
             result = re.findall(r'Number of key(s) added: 1', info)
             if result == []:
                 time.sleep(2)
-                conn.send(passwd + '\n')
+                if isinstance(passwd, int):
+                    passwd = str(passwd)
+                conn.send(str(passwd + '\n'))
 
             time.sleep(1)
             stdout = conn.recv(9999)
@@ -141,7 +144,7 @@ class Log(object):
 
     @staticmethod
     def set_handler(logger):
-        fh = logging.FileHandler('./SSHFreeLog.log', mode='a')
+        fh = logging.FileHandler('./vsdssshfree.log', mode='a')
         fh.setLevel(logging.DEBUG)
         formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
         fh.setFormatter(formatter)

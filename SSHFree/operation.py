@@ -1,3 +1,4 @@
+import subprocess
 import paramiko
 import yaml
 import utils
@@ -121,6 +122,7 @@ def check_authorized_keys(ssh_obj):
         return True
 
 def check_node(node_list):
+
     for z in node_list:
         ipaddr_z = z['ip']
         usname_z = z['username']
@@ -135,32 +137,52 @@ def check_node(node_list):
             ssh_obj = utils.SSHConn(host=ipaddr, username=usname, password=passwd)
 
             try:
-                # 创建 SSH 客户端对象
-                ssh_client = paramiko.SSHClient()
+                 # 使用 subprocess 执行 SSH 命令
+                result = subprocess.run(
+                    f'ssh -o StrictHostKeyChecking=no -o NumberOfPasswordPrompts=0 {usname_z}@{ipaddr_z} ssh -o StrictHostKeyChecking=no -o NumberOfPasswordPrompts=0 {usname}@{ipaddr} "echo success"',
+                    shell=True,
+                    check=False,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE
+                )
 
-                # 设置自动添加主机密钥
-                ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                if result.returncode == 0:
+                    print(f"从 {ssh_obj_z['ip']} 到 {ssh_obj['ip']} 的SSH连接（无密码）成功。")
+                else:
+                    log_data = f"从 {ipaddr_z} 到 {ipaddr} SSH 连接失败: {result.stderr.decode().strip()}"
+                    print(log_data)
+                    utils.Log().logger.info(log_data)
+                    return False
+                # # 创建 SSH 客户端对象
+                # ssh_client = paramiko.SSHClient()
 
-                # 连接到 ssh_obj_z
-                ssh_client.connect(hostname=ssh_obj_z['ip'], username=ssh_obj_z['username'], password=ssh_obj_z['password'])
-
-                # 使用 ssh_obj_z SSH 连接到 ssh_obj
-                transport = ssh_client.get_transport()
-                dest_addr = (ssh_obj['ip'], 22)  #
-                local_addr = (ssh_obj_z['ip'], 22)  
-                channel = transport.open_channel("direct-tcpip", dest_addr, local_addr)
-
-                # 使用连接测试对目标节点进行连接
-                ssh_session = paramiko.SSHClient()
-                ssh_session.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                ssh_session.connect(hostname=ssh_obj['ip'], username=ssh_obj['username'], password=None, sock=channel)
-
-                # 关闭连接
-                ssh_session.close()
-                ssh_client.close()
-
-                print(f"从{ssh_obj_z['ip']}到{ssh_obj['ip']}的SSH连接（无密码）成功。")
+                # # 设置自动添加主机密钥
+                # ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                 
+                # # 连接到 ssh_obj_z
+                # ssh_client.connect(hostname=ssh_obj_z['ip'], username=ssh_obj_z['username'], password=ssh_obj_z['password'])
+
+                # # 使用 ssh_obj_z SSH 连接到 ssh_obj
+                # transport = ssh_client.get_transport()
+                # dest_addr = (ssh_obj['ip'], 22)  #
+                # local_addr = (ssh_obj_z['ip'], 22)  
+                # channel = transport.open_channel("direct-tcpip", dest_addr, local_addr)
+
+                # # 使用连接测试对目标节点进行连接
+                # ssh_session = paramiko.SSHClient()
+                # ssh_session.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                
+                # ssh_session.connect(hostname=ssh_obj['ip'], username=ssh_obj['username'], password=None, sock=channel)
+
+                # # 关闭连接
+                # ssh_session.close()
+                # ssh_client.close()
+            except subprocess.CalledProcessError as e:
+                log_data = f"SSH connection failed from {ipaddr_z} to {ipaddr}: {e.stderr.decode().strip()}"
+                print(log_data)
+                utils.Log().logger.info(log_data)
+                return False
+            
             except paramiko.AuthenticationException as auth_exception:
                 log_data = f"Authentication failed from {ssh_obj_z['ip']} to {ssh_obj['ip']}: {auth_exception}"
                 print(log_data)
@@ -184,7 +206,7 @@ def modify_ssh_config(nodes):
 
         host = node['ip']
         username = node['username']
-        password = node['password']
+        password = str(node['password'])
 
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -200,7 +222,7 @@ def modify_ssh_config(nodes):
 
             # 查找并替换特定行
             for i, line in enumerate(lines):
-                if line.strip().startswith(b'#   StrictHostKeyChecking ask'):
+                if line.strip().startswith('#   StrictHostKeyChecking ask'):
                     lines[i] = b'StrictHostKeyChecking no\n'
                     log_data = f"{username} 节点 StrictHostKeyChecking no 替换完成"
                     utils.Log().logger.info(log_data)
