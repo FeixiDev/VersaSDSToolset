@@ -49,6 +49,14 @@ def get_ip(result):
     if re_obj:
         return re_obj.group(1)
 
+def get_dns(result):
+    dns_list = re.findall(r'IP4.DNS\[\d+\]:\s+(\d+\.\d+\.\d+\.\d+)', result)
+    return dns_list
+
+def get_gateway(result):
+    gateway_obj = re.search(r'IP4.GATEWAY:\s+(\d+\.\d+\.\d+\.\d+)', result)
+    if gateway_obj:
+        return gateway_obj.group(1)
 
 def get_ssh_conn(node, password):
     if utils.get_host_ip() == node or node is None:
@@ -279,9 +287,25 @@ class NormalIP(object):
     def __init__(self):
         pass
 
-    def create_ip(self, conn, device_list, ip):
+    def create_ip(self, conn, device_list, ip, dns=None, gateway=None):
+        
+        print(f"DEBUG: 默认gateway: {gateway}")
         if not utils.check_ip(ip):
             sys.exit()
+        if gateway is None:
+            gateway = f"{'.'.join(ip.split('.')[:3])}.1"
+            print(f"DEBUG: 默认gateway修改为: {gateway}")
+        elif not utils.check_ip(gateway):
+            print("Invalid gateway IP format.")
+            sys.exit()
+        print(f"DEBUG: 实际gateway: {gateway}")
+        
+        print(f"DEBUG: 默认DNS: {dns}")
+        if dns is None:
+            dns = "'114.114.114.114 8.8.8.8'"
+            print(f"DEBUG: 默认DNS修改为: {dns}")
+        print(f"DEBUG: 实际DNS: {dns}")
+
         normal_ip = action.IpService(conn)
         lc_device_data = normal_ip.get_device_status()
         if not check_device(device_list, lc_device_data):
@@ -290,8 +314,8 @@ class NormalIP(object):
         connection_detail = normal_ip.get_connection()
         connection = get_device_connection(device, connection_detail)
         print(f"Start to set {ip} on the {device}")
-        gateway = f"{'.'.join(ip.split('.')[:3])}.1"
-        normal_ip.set_ip(device, ip, gateway)
+        # gateway = f"{'.'.join(ip.split('.')[:3])}.1"
+        normal_ip.set_ip(device, ip, gateway, dns)
         normal_ip.up_ip_service(f'vtel_{device}')
         print(f"Finish to set {ip} on the {device}")
         if connection:
@@ -313,9 +337,18 @@ class NormalIP(object):
             normal_ip.del_connect(connection)
         print(f"Finish to del IP configuration on the {device}")
 
-    def modify_ip(self, conn, device_list, ip):
+    def modify_ip(self, conn, device_list, ip, dns=None, gateway=None):
         if not utils.check_ip(ip):
             sys.exit()
+        # if gateway is None:
+        #     gateway = f"{'.'.join(ip.split('.')[:3])}.1"
+        # elif not utils.check_ip(gateway):
+        #     print("Invalid gateway IP format.")
+        #     sys.exit()
+
+        # if dns is None:
+        #     dns = "'114.114.114.114 8.8.8.8'"
+
         normal_ip = action.IpService(conn)
         lc_device_data = normal_ip.get_device_status()
         if not check_device(device_list, lc_device_data):
@@ -328,10 +361,37 @@ class NormalIP(object):
             sys.exit()
         ip_detail = normal_ip.get_device_detail(device)
         lc_ip = get_ip(ip_detail)
+        lc_DNS = get_dns(ip_detail)
+        lc_DNS = re.search(r"'(.*?)'", str(lc_DNS)).group(1)
+        lc_Gateway = get_gateway(ip_detail)
+        b_ip = False
+        b_dns = False
+        b_gateway = False
         if ip == lc_ip:
-            print("Same IP. Do nothing.")
+            print("Same IP.")
         else:
+            b_ip = True
             print(f"Change {device} IP, {lc_ip} -> {ip}.")
-            gateway = f"{'.'.join(ip.split('.')[:3])}.1"
-            normal_ip.modify_normal_ip(device, ip, gateway)
+        if dns is not None:
+            if lc_DNS == dns:
+                print("Same dns.")
+            else:
+                b_dns = True
+                print(f"Change {device} DNS, {lc_DNS} -> {dns}.")
+            
+        if gateway is not None:
+            if lc_Gateway == gateway:
+                print("Same gateway.")
+            else:
+                b_gateway = True
+                print(f"Change {device} Gateway, {lc_Gateway} -> {gateway}.")
+                # gateway = f"{'.'.join(ip.split('.')[:3])}.1"
+        elif not utils.check_ip(gateway):
+            print("Invalid gateway IP format.")
+            sys.exit()
+
+        if b_ip or b_dns or b_gateway:
+            normal_ip.modify_normal_ip(device, ip, gateway, dns)
             normal_ip.up_ip_service(connection_name)
+        else:
+            print("Do nothing.")

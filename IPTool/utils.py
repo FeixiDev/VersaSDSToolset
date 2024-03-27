@@ -16,14 +16,15 @@ def get_host_ip():
     查询本机ip地址
     :return: ip
     """
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(('8.8.8.8', 80))
-        ip = s.getsockname()[0]
-    finally:
-        s.close()
+    # try:
+    #     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    #     s.connect(('8.8.8.8', 80))
+    #     ip = s.getsockname()[0]
+    # finally:
+    #     s.close()
 
-    return ip
+    # return ip
+    return None 
 
 
 def exec_cmd(cmd, conn=None):
@@ -68,6 +69,7 @@ def check_ip(ip):
     else:
         print(f"ERROR in IP format of {ip}, please check.")
         return False
+
 
 
 # class SSHConn(object):  # 注释
@@ -115,7 +117,6 @@ def check_ip(ip):
 #                 data = data.decode() if isinstance(data, bytes) else data
 #                 return {"st": True, "rt": data}
 
-
 def get_hostname():
     """
     查询本机hostname
@@ -148,17 +149,17 @@ class ConfFile(object):
     #     """更新文件内容"""
     #     with open(self.yaml_file, 'w', encoding='utf-8') as f:
     #         yaml.dump(self.cluster, f, default_flow_style=False)
-
+    
     def get_config(self):
         for host_config in self.config["bond"]:
             if not check_mode(host_config['mode']):
-                print(f"Please check the mode config of {host_config['node']}")
+                print(f"Please check the mode config of {host_config['mode']}")
                 sys.exit()
             if not check_ip(host_config['ip']):
-                print(f"Please check the ip config of {host_config['node']}")
+                print(f"Please check the ip config of {host_config['mode']}")
                 sys.exit()
             if len(host_config["device"]) != 2:
-                print(f"Please check the ip config of {host_config['node']}. Number of bond devices must be 2")
+                print(f"Please check the ip config of {host_config['mode']}. Number of bond devices must be 2")
                 sys.exit()
         return self.config["bond"]
 

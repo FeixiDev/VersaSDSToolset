@@ -6,9 +6,9 @@ class IpService(object):
     def __init__(self, conn=None):
         self.conn = conn
 
-    def set_ip(self, device, ip, gateway, netmask=24):
+    def set_ip(self, device, ip, gateway, dns, netmask=24):
         connection_name = f'vtel_{device}'
-        cmd = f"nmcli connection add con-name {connection_name} type ethernet ifname {device} ipv4.addresses {ip}/{netmask} ipv4.gateway {gateway} ipv4.dns '114.114.114.114 8.8.8.8' ipv4.method manual ipv6.method ignore"
+        cmd = f"nmcli connection add con-name {connection_name} type ethernet ifname {device} ipv4.addresses {ip}/{netmask} ipv4.gateway {gateway} ipv4.dns {dns} ipv4.method manual ipv6.method ignore"
         result = utils.exec_cmd(cmd, self.conn)
         if result:
             if result["st"]:
@@ -30,9 +30,22 @@ class IpService(object):
                 print(f" Failed to up {connection_name}.")
         return False
 
-    def modify_normal_ip(self, device, new_ip, gateway, netmask=24):
+    # def modify_normal_ip(self, device, new_ip, gateway, netmask=24):
+    #     connection_name = f'vtel_{device}'
+    #     cmd = f"nmcli connection modify {connection_name} ipv4.address {new_ip}/{netmask} ipv4.gateway {gateway}"
+    #     result = utils.exec_cmd(cmd, self.conn)
+    #     if result:
+    #         if result["st"]:
+    #             return True
+    #     return False
+
+    def modify_normal_ip(self, device, new_ip, gateway=None, dns=None, netmask=24):
         connection_name = f'vtel_{device}'
-        cmd = f"nmcli connection modify {connection_name} ipv4.address {new_ip}/{netmask} ipv4.gateway {gateway}"
+        cmd = f"nmcli connection modify {connection_name} ipv4.address {new_ip}/{netmask}"
+        if gateway is not None:
+            cmd += f" ipv4.gateway {gateway}"
+        if dns is not None:
+            cmd += f" ipv4.dns {dns}"
         result = utils.exec_cmd(cmd, self.conn)
         if result:
             if result["st"]:
